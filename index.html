@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Life Tracker</title>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+  <style>
+    :root {
+      --bg-primary: #f4f6f9;
+      --bg-card: #ffffff;
+      --text-main: #1e293b;
+      --text-muted: #64748b;
+      --accent: #0d9488;
+      --accent-hover: #0f766e;
+      --border-color: #e2e8f0;
+      --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+      --radius: 12px;
+    }
+
+    body.dark-mode {
+      --bg-primary: #0f172a;
+      --bg-card: #1e293b;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --border-color: #334155;
+      --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+    body { background-color: var(--bg-primary); color: var(--text-main); padding-bottom: 70px; transition: background 0.3s; }
+    .app-header { background-color: var(--bg-card); border-bottom: 1px solid var(--border-color); padding: 1rem 1.5rem; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 100; }
+    .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 1.25rem; color: var(--accent); }
+    .container { max-width: 900px; margin: 0 auto; padding: 1.5rem 1rem; }
+
+    /* Workspaces Navigation */
+    .workspace-bar { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 10px; margin-bottom: 1.5rem; scrollbar-width: none; }
+    .workspace-btn { background: var(--bg-card); border: 1px solid var(--border-color); padding: 8px 16px; border-radius: 20px; color: var(--text-main); font-size: 0.9rem; cursor: pointer; white-space: nowrap; display: flex; align-items: center; gap: 6px; transition: 0.2s; }
+    .workspace-btn.active { background: var(--accent); color: white; border-color: var(--accent); }
+
+    /* Cards Grid */
+    .dashboard-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
+    .stat-card { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius); padding: 1.2rem; box-shadow: var(--shadow); display: flex; align-items: center; justify-content: space-between; }
+    
+    /* Progress Circle */
+    .progress-widget { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius); padding: 1.5rem; box-shadow: var(--shadow); margin-bottom: 1.5rem; display: flex; align-items: center; gap: 1.5rem; }
+    .circle-box { position: relative; width: 100px; height: 100px; flex-shrink: 0; }
+    .circle-box svg { width: 100px; height: 100px; transform: rotate(-90deg); }
+    .circle-box circle { fill: none; stroke-width: 8; stroke-linecap: round; }
+    .bg-circle { stroke: var(--border-color); }
+    .progress-circle { stroke: var(--accent); stroke-dasharray: 283; stroke-dashoffset: 283; transition: stroke-dashoffset 0.5s ease; }
+    .percentage-text { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 1.2rem; font-weight: 700; color: var(--text-main); }
+
+    /* Buttons & Actions */
+    .action-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
+    .btn { background: var(--accent); color: white; border: none; padding: 10px 18px; border-radius: 8px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
+    .btn:hover { background: var(--accent-hover); }
+
+    /* Lists */
+    .task-item, .note-item { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius); padding: 1rem; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; box-shadow: var(--shadow); }
+    .task-left { display: flex; align-items: center; gap: 12px; }
+    .task-title.completed { text-decoration: line-through; opacity: 0.6; }
+    .priority-badge { font-size: 0.75rem; padding: 3px 8px; border-radius: 12px; color: white; font-weight: 600; }
+    .p-high { background-color: #ef4444; }
+    .p-medium { background-color: #f59e0b; }
+    .p-low { background-color: #10b981; }
+
+    /* Navigation Bar */
+    .bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; background: var(--bg-card); border-top: 1px solid var(--border-color); display: flex; justify-content: space-around; padding: 10px 0; z-index: 100; }
+    .nav-btn { background: none; border: none; color: var(--text-muted); font-size: 0.8rem; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+    .nav-btn.active { color: var(--accent); }
+
+    /* Modal */
+    .modal { display: none; position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.5); justify-content: center; align-items: center; z-index: 200; }
+    .modal-content { background: var(--bg-card); padding: 1.5rem; border-radius: var(--radius); width: 90%; max-width: 450px; }
+    .form-group { margin-bottom: 1rem; }
+    .form-group label { display: block; margin-bottom: 5px; font-size: 0.9rem; }
+    .form-group input, .form-group select, .form-group textarea { width: 100%; padding: 10px; border: 1px solid var(--border-color); border-radius: 6px; background: var(--bg-primary); color: var(--text-main); }
+  </style>
+</head>
+<body>
+
+  <header class="app-header">
+    <div class="brand"><i class="fa-solid fa-heart-pulse"></i> Life Tracker</div>
+    <button class="btn" style="background:none; color:var(--text-main);" onclick="toggleDarkMode()">
+      <i class="fa-solid fa-moon"></i>
+    </button>
+  </header>
+
+  <div class="container">
+    <!-- Workspaces -->
+    <div class="workspace-bar">
+      <button class="workspace-btn active" onclick="switchWorkspace('all', this)"><i class="fa-solid fa-layer-group"></i> All</button>
+      <button class="workspace-btn" onclick="switchWorkspace('home', this)"><i class="fa-solid fa-house"></i> Home / Bahay</button>
+      <button class="workspace-btn" onclick="switchWorkspace('school', this)"><i class="fa-solid fa-graduation-cap"></i> School</button>
+      <button class="workspace-btn" onclick="switchWorkspace('church', this)"><i class="fa-solid fa-church"></i> Church</button>
+      <button class="workspace-btn" onclick="switchWorkspace('work', this)"><i class="fa-solid fa-briefcase"></i> Work</button>
+    </div>
+
+    <!-- Progress Percentage Widget -->
+    <div class="progress-widget">
+      <div class="circle-box">
+        <svg>
+          <circle class="bg-circle" cx="50" cy="50" r="45"></circle>
+          <circle class="progress-circle" id="progressCircle" cx="50" cy="50" r="45"></circle>
+        </svg>
+        <div class="percentage-text" id="percentageText">0%</div>
+      </div>
+      <div>
+        <h3 id="progressTitle">Overall Progress</h3>
+        <p id="progressSubtitle" style="color: var(--text-muted); font-size: 0.9rem;">0 of 0 tasks completed</p>
+      </div>
+    </div>
+
+    <!-- Quick Stats -->
+    <div class="dashboard-grid">
+      <div class="stat-card">
+        <div>
+          <div style="color:var(--text-muted); font-size:0.85rem;">Pending Tasks</div>
+          <h2 id="pendingCount">0</h2>
+        </div>
+        <i class="fa-solid fa-clock-rotate-left fa-2x" style="color: var(--accent);"></i>
+      </div>
+      <div class="stat-card">
+        <div>
+          <div style="color:var(--text-muted); font-size:0.85rem;">High Priority</div>
+          <h2 id="highPriorityCount">0</h2>
+        </div>
+        <i class="fa-solid fa-triangle-exclamation fa-2x" style="color: #ef4444;"></i>
+      </div>
+    </div>
+
+    <!-- Action Bar -->
+    <div class="action-bar">
+      <h2>Tasks & To-Dos</h2>
+      <button class="btn" onclick="openModal('taskModal')"><i class="fa-solid fa-plus"></i> Add Task</button>
+    </div>
+
+    <!-- Task List Container -->
+    <div id="taskList"></div>
+
+    <!-- Notes Section -->
+    <div class="action-bar" style="margin-top: 2rem;">
+      <h2>Quick Notes / Details</h2>
+      <button class="btn" style="background:#6366f1;" onclick="openModal('noteModal')"><i class="fa-solid fa-note-sticky"></i> Add Note</button>
+    </div>
+    <div id="noteList"></div>
+  </div>
+
+  <!-- Modal Task -->
+  <div class="modal" id="taskModal">
+    <div class="modal-content">
+      <h3>Add New Task</h3>
+      <br>
+      <div class="form-group">
+        <label>Task Title</label>
+        <input type="text" id="taskTitle" placeholder="e.g. Clean room or Math Homework">
+      </div>
+      <div class="form-group">
+        <label>Workspace</label>
+        <select id="taskWorkspace">
+          <option value="home">Home / Bahay</option>
+          <option value="school">School</option>
+          <option value="church">Church</option>
+          <option value="work">Work</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Priority</label>
+        <select id="taskPriority">
+          <option value="p-low">Low</option>
+          <option value="p-medium">Medium</option>
+          <option value="p-high">High</option>
+        </select>
+      </div>
+      <div style="display:flex; justify-content:flex-end; gap:10px;">
+        <button class="btn" style="background:var(--text-muted);" onclick="closeModal('taskModal')">Cancel</button>
+        <button class="btn" onclick="addTask()">Save Task</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Note -->
+  <div class="modal" id="noteModal">
+    <div class="modal-content">
+      <h3>Add Detailed Note</h3>
+      <br>
+      <div class="form-group">
+        <label>Title</label>
+        <input type="text" id="noteTitle" placeholder="e.g. Grocery List or Meeting Details">
+      </div>
+      <div class="form-group">
+        <label>Details</label>
+        <textarea id="noteContent" rows="4" placeholder="Type full details here..."></textarea>
+      </div>
+      <div class="form-group">
+        <label>Workspace</label>
+        <select id="noteWorkspace">
+          <option value="home">Home / Bahay</option>
+          <option value="school">School</option>
+          <option value="church">Church</option>
+          <option value="work">Work</option>
+        </select>
+      </div>
+      <div style="display:flex; justify-content:flex-end; gap:10px;">
+        <button class="btn" style="background:var(--text-muted);" onclick="closeModal('noteModal')">Cancel</button>
+        <button class="btn" onclick="addNote()">Save Note</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bottom Bar -->
+  <nav class="bottom-nav">
+    <button class="nav-btn active"><i class="fa-solid fa-house"></i> Home</button>
+    <button class="nav-btn" onclick="openModal('taskModal')"><i class="fa-solid fa-plus-circle fa-lg"></i> Add</button>
+    <button class="nav-btn" onclick="openModal('noteModal')"><i class="fa-solid fa-sticky-note"></i> Note</button>
+  </nav>
+
+  <script>
+    let currentWorkspace = 'all';
+    let tasks = JSON.parse(localStorage.getItem('lt_tasks')) || [];
+    let notes = JSON.parse(localStorage.getItem('lt_notes')) || [];
+
+    function saveData() {
+      localStorage.setItem('lt_tasks', JSON.stringify(tasks));
+      localStorage.setItem('lt_notes', JSON.stringify(notes));
+      render();
+    }
+
+    function switchWorkspace(ws, element) {
+      currentWorkspace = ws;
+      document.querySelectorAll('.workspace-btn').forEach(btn => btn.classList.remove('active'));
+      element.classList.add('active');
+      render();
+    }
+
+    function toggleDarkMode() {
+      document.body.classList.toggle('dark-mode');
+    }
+
+    function openModal(id) { document.getElementById(id).style.display = 'flex'; }
+    function closeModal(id) { document.getElementById(id).style.display = 'none'; }
+
+    function addTask() {
+      const title = document.getElementById('taskTitle').value;
+      const workspace = document.getElementById('taskWorkspace').value;
+      const priority = document.getElementById('taskPriority').value;
+
+      if (!title) return alert('Please enter a task title');
+
+      tasks.push({ id: Date.now(), title, workspace, priority, completed: false });
+      document.getElementById('taskTitle').value = '';
+      closeModal('taskModal');
+      saveData();
+    }
+
+    function addNote() {
+      const title = document.getElementById('noteTitle').value;
+      const content = document.getElementById('noteContent').value;
+      const workspace = document.getElementById('noteWorkspace').value;
+
+      if (!title) return alert('Please enter a note title');
+
+      notes.push({ id: Date.now(), title, content, workspace });
+      document.getElementById('noteTitle').value = '';
+      document.getElementById('noteContent').value = '';
+      closeModal('noteModal');
+      saveData();
+    }
+
+    function toggleTask(id) {
+      tasks = tasks.map(t => t.id === id ? { ...t, completed: !t.completed } : t);
+      saveData();
+    }
+
+    function deleteTask(id) {
+      tasks = tasks.filter(t => t.id !== id);
+      saveData();
+    }
+
+    function deleteNote(id) {
+      notes = notes.filter(n => n.id !== id);
+      saveData();
+    }
+
+    function render() {
+      const filteredTasks = currentWorkspace === 'all' ? tasks : tasks.filter(t => t.workspace === currentWorkspace);
+      const filteredNotes = currentWorkspace === 'all' ? notes : notes.filter(n => n.workspace === currentWorkspace);
+
+      // Render Tasks
+      const taskList = document.getElementById('taskList');
+      taskList.innerHTML = filteredTasks.length ? '' : '<p style="color:var(--text-muted);">No tasks in this workspace.</p>';
+      
+      filteredTasks.forEach(task => {
+        const item = document.createElement('div');
+        item.className = 'task-item';
+        item.innerHTML = `
+          <div class="task-left">
+            <input type="checkbox" ${task.completed ? 'checked' : ''} onchange="toggleTask(${task.id})">
+            <span class="task-title ${task.completed ? 'completed' : ''}">${task.title}</span>
+            <span class="priority-badge ${task.priority}">${task.priority.replace('p-', '').toUpperCase()}</span>
+          </div>
+          <button style="background:none; border:none; color:#ef4444; cursor:pointer;" onclick="deleteTask(${task.id})">
+            <i class="fa-solid fa-trash"></i>
+          </button>
+        `;
+        taskList.appendChild(item);
+      });
+
+      // Render Notes
+      const noteList = document.getElementById('noteList');
+      noteList.innerHTML = filteredNotes.length ? '' : '<p style="color:var(--text-muted);">No notes added yet.</p>';
+
+      filteredNotes.forEach(note => {
+        const item = document.createElement('div');
+        item.className = 'note-item';
+        item.innerHTML = `
+          <div>
+            <strong>${note.title}</strong>
+            <p style="font-size:0.85rem; color:var(--text-muted); margin-top:4px;">${note.content}</p>
+          </div>
+          <button style="background:none; border:none; color:#ef4444; cursor:pointer;" onclick="deleteNote(${note.id})">
+            <i class="fa-solid fa-trash"></i>
+          </button>
+        `;
+        noteList.appendChild(item);
+      });
+
+      // Update Percentage & Statistics
+      const total = filteredTasks.length;
+      const completed = filteredTasks.filter(t => t.completed).length;
+      const pending = total - completed;
+      const highPriority = filteredTasks.filter(t => t.priority === 'p-high' && !t.completed).length;
+      const percentage = total > 0 ? Math.round((completed / total) * 100) : 0;
+
+      document.getElementById('percentageText').innerText = `${percentage}%`;
+      document.getElementById('progressSubtitle').innerText = `${completed} of ${total} tasks completed`;
+      document.getElementById('pendingCount').innerText = pending;
+      document.getElementById('highPriorityCount').innerText = highPriority;
+
+      // Update Progress SVG Ring
+      const circle = document.getElementById('progressCircle');
+      const circumference = 2 * Math.PI * 45; // r=45
+      const offset = circumference - (percentage / 100) * circumference;
+      circle.style.strokeDasharray = `${circumference}`;
+      circle.style.strokeDashoffset = `${offset}`;
+    }
+
+    render();
+  </script>
+</body>
+</html>
